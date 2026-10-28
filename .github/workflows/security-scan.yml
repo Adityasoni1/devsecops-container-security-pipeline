@@ -6,22 +6,24 @@ on:
   pull_request:
     branches: [ "main" ]
 
+# Grants the workflow permission to write to GitHub's Security dashboard
+permissions:
+  contents: read
+  security-events: write
+
 jobs:
   build-and-security-scan:
     name: Build Image & Run Trivy Gate
     runs-on: ubuntu-latest
 
     steps:
-      # Step 1: Check out repo code
       - name: Checkout Code
         uses: actions/checkout@v4
 
-      # Step 2: Build the container image
       - name: Build Docker Image
         run: |
           docker build -t local-test-app:${{ github.sha }} .
 
-      # Step 3: Run Trivy with SARIF output (for dashboard reporting)
       - name: Scan Container Image (SARIF Report)
         uses: aquasecurity/trivy-action@master
         with:
@@ -30,14 +32,12 @@ jobs:
           output: 'trivy-results.sarif'
           severity: 'CRITICAL,HIGH'
 
-      # Step 4: Upload SARIF report to GitHub Security Tab
       - name: Upload SARIF Results to GitHub Security
         uses: github/codeql-action/upload-sarif@v3
         if: always()
         with:
           sarif_file: 'trivy-results.sarif'
 
-      # Step 5: Enforce the Security Gate (Fail build on exit-code 1)
       - name: Enforce Security Gate (Exit Code 1 on High/Critical)
         uses: aquasecurity/trivy-action@master
         with:
