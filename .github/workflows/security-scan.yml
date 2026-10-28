@@ -1,0 +1,50 @@
+name: DevSecOps Container Security Pipeline
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+
+jobs:
+  build-and-security-scan:
+    name: Build Image & Run Trivy Gate
+    runs-on: ubuntu-latest
+
+    steps:
+      # Step 1: Check out repo code
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      # Step 2: Build the container image
+      - name: Build Docker Image
+        run: |
+          docker build -t local-test-app:${{ github.sha }} .
+
+      # Step 3: Run Trivy with SARIF output (for dashboard reporting)
+      - name: Scan Container Image (SARIF Report)
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: 'local-test-app:${{ github.sha }}'
+          format: 'sarif'
+          output: 'trivy-results.sarif'
+          severity: 'CRITICAL,HIGH'
+
+      # Step 4: Upload SARIF report to GitHub Security Tab
+      - name: Upload SARIF Results to GitHub Security
+        uses: github/codeql-action/upload-sarif@v3
+        if: always()
+        with:
+          sarif_file: 'trivy-results.sarif'
+
+      # Step 5: Enforce the Security Gate (Fail build on exit-code 1)
+      - name: Enforce Security Gate (Exit Code 1 on High/Critical)
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: 'local-test-app:${{ github.sha }}'
+          format: 'table'
+          exit-code: '1'
+          ignore-unfixed: true
+          vuln-type: 'os,library'
+          severity: 'CRITICAL,HIGH'
+          
