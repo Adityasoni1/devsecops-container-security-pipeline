@@ -1,5 +1,5 @@
 # Use Python on top of Alpine Linux (lightweight and secure)
-FROM python:3.11-alpine
+FROM python:3.12-alpine
 
 # Create a non-privileged user (enforces least-privilege security)
 RUN addgroup -S appgroup && adduser -S appuser -G appgroup
